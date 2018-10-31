@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 #---------------usage--------------
 # put this file to home directory ~
@@ -6,7 +6,6 @@
 # restart xcode, when breakpoint hit, call: pgbk $var
 #--------------------------------------------------------------------
 
-import sys
 import lldb
 import commands
 import codecs
@@ -16,9 +15,6 @@ import shlex
 def __lldb_init_module(debugger, dict):
     parser = create_pgbk_options()
     pgbk_command.__doc__ = parser.format_help()
-
-    reload(sys)
-    sys.setdefaultencoding('gbk')
 
     # Add any commands contained in this module to LLDB
     debugger.HandleCommand('command script add -f pgbk.pgbk_command pgbk')
@@ -56,8 +52,19 @@ def pgbk_command(debugger, command, result, dict):
     if not frame.IsValid():
         return "no frame here"
 
-    val = frame.var(args[0])
+    val = frame.EvaluateExpression((args[0]))
+    #val = frame.FindVariable(args[0])
     val_string = val.GetSummary()
 
-    print(val_string.encode('utf8'))
+    i = 0
+    byte_string = b''
+    while i < len(val_string):   ## convert to byte array; sometimes val_string contains literal hex
+        if i + 3 < len(val_string) and val_string[i] == '\\' and val_string[i + 1] == 'x':
+            byte_string += chr(int("0x"+val_string[i+2:i+4].decode('latin1'), 0))
+            i = i + 4
+        else:
+            byte_string += val_string[i]
+            i = i + 1
+
+    print(byte_string.decode('gbk').encode('utf8'))
 
